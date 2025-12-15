@@ -2,11 +2,10 @@ package main
 
 import (
 	"fmt"
+	"learn-pub-sub-starter/internal/gamelogic"
 	"learn-pub-sub-starter/internal/pubsub"
 	"learn-pub-sub-starter/internal/routing"
 	"log"
-	"os"
-	"os/signal"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -26,14 +25,41 @@ func main() {
 		log.Fatalf("error opening connection channel: %v", err)
 	}
 	fmt.Println("Connection channel opened.")
-	err = pubsub.PublishJSON(rabbitChan, string(routing.ExchangePerilDirect), string(routing.PauseKey), routing.PlayingState{IsPaused: true})
-	if err != nil {
-		log.Fatalf("erorr publishing message to exchange: %v", err)
+
+	gamelogic.PrintServerHelp()
+
+	for {
+		serverCmds := gamelogic.GetInput()
+		if len(serverCmds) != 0 {
+			switch serverCmds[0] {
+			case "pause":
+				fmt.Println("Pausing server.")
+				err = pubsub.PublishJSON(rabbitChan, string(routing.ExchangePerilDirect), string(routing.PauseKey), routing.PlayingState{IsPaused: true})
+				if err != nil {
+					log.Fatalf("error publishing message to exchange: %v", err)
+
+				}
+				fmt.Println("Pause message published to exchange.")
+			case "resume":
+				fmt.Println("Resuming server.")
+				err = pubsub.PublishJSON(rabbitChan, string(routing.ExchangePerilDirect), string(routing.PauseKey), routing.PlayingState{IsPaused: false})
+				if err != nil {
+					log.Fatalf("error publishing message to exchange: %v", err)
+
+				}
+				fmt.Println("Resume message published to exchange.")
+			case "quit":
+				fmt.Println("Exiting server.")
+				return
+			default:
+				fmt.Println("I don't understand that command, sorry.")
+			}
+		}
 	}
-	fmt.Println("Message published to exchange.")
-	// wait for ctrl+c
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt)
-	<-signalChan
-	fmt.Println("Closing server.")
+	/*
+		// wait for ctrl+c
+		signalChan := make(chan os.Signal, 1)
+		signal.Notify(signalChan, os.Interrupt)
+		<-signalChan
+		fmt.Println("Closing server.")*/
 }
