@@ -5,8 +5,6 @@ import (
 	"learn-pub-sub-starter/internal/gamelogic"
 	"learn-pub-sub-starter/internal/pubsub"
 	"log"
-	"os"
-	"os/signal"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -31,9 +29,40 @@ func main() {
 	}
 	fmt.Printf("Queue %v declared and bound successfully.\n", queue.Name)
 
-	// wait for ctrl+c
+	gs := gamelogic.NewGameState(userName)
+
+	for {
+		clientCmds := gamelogic.GetInput()
+		if len(clientCmds) != 0 {
+			switch clientCmds[0] {
+			case "spawn":
+				err = gs.CommandSpawn(clientCmds)
+				if err != nil {
+					fmt.Printf("invalid spawn syntax: %v\n", err)
+				}
+			case "move":
+				_, err := gs.CommandMove(clientCmds)
+				if err != nil {
+					fmt.Printf("invalid move syntax: %s\n", err)
+				}
+			case "status":
+				gs.CommandStatus()
+			case "help":
+				gamelogic.PrintClientHelp()
+			case "spam":
+				fmt.Println("Spamming is not allowed yet!")
+			case "quit":
+				fmt.Println("exiting client.")
+				return
+			default:
+				fmt.Println("I don't understand the command.")
+			}
+		}
+	}
+
+	/* wait for ctrl+c
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, os.Interrupt)
 	<-signalChan
-	fmt.Println("RabbitMQ connection closed.")
+	fmt.Println("RabbitMQ connection closed.")*/
 }
