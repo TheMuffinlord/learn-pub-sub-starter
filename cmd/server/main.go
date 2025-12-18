@@ -26,6 +26,12 @@ func main() {
 	}
 	fmt.Println("Connection channel opened.")
 
+	_, queue, err := pubsub.DeclareAndBind(conn, "peril_topic", routing.GameLogSlug, "game_logs.*", "durable")
+	if err != nil {
+		log.Fatalf("Error binding channel and queue: %v", err)
+	}
+	fmt.Printf("Queue %v declared and bound successfully.\n", queue.Name)
+
 	gamelogic.PrintServerHelp()
 
 	for {
