@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"learn-pub-sub-starter/internal/gamelogic"
 	"learn-pub-sub-starter/internal/pubsub"
+	"learn-pub-sub-starter/internal/routing"
 	"log"
 
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -23,14 +24,18 @@ func main() {
 	if err != nil {
 		log.Fatalf("Welcome Error: %v", err)
 	}
-	_, queue, err := pubsub.DeclareAndBind(conn, "peril_direct", "pause."+userName, "pause", "transient")
-	if err != nil {
+	//_, queue, err := pubsub.DeclareAndBind(conn, routing.ExchangePerilDirect, "pause."+userName, "pause", "transient")
+	/*if err != nil {
 		log.Fatalf("Error binding channel and queue: %v", err)
 	}
-	fmt.Printf("Queue %v declared and bound successfully.\n", queue.Name)
+	fmt.Printf("Queue %v declared and bound successfully.\n", queue.Name)*/
 
 	gs := gamelogic.NewGameState(userName)
-
+	err = pubsub.SubscribeJSON(conn, routing.ExchangePerilDirect, routing.PauseKey+"."+gs.GetUsername(), routing.PauseKey, "transient", handlerPause(gs))
+	if err != nil {
+		log.Fatalf("Error subscribing to json: %v", err)
+	}
+	fmt.Println("Subscribed to channel json.")
 	for {
 		clientCmds := gamelogic.GetInput()
 		if len(clientCmds) != 0 {
