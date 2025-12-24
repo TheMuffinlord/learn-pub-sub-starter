@@ -20,6 +20,11 @@ func main() {
 	defer conn.Close()
 	fmt.Println("Connection to  server successful.")
 
+	publishCh, err := conn.Channel()
+	if err != nil {
+		log.Fatalf("Could not create channel: %v", err)
+	}
+
 	userName, err := gamelogic.ClientWelcome()
 	if err != nil {
 		log.Fatalf("Welcome Error: %v", err)
@@ -31,11 +36,23 @@ func main() {
 	fmt.Printf("Queue %v declared and bound successfully.\n", queue.Name)*/
 
 	gs := gamelogic.NewGameState(userName)
-	err = pubsub.SubscribeJSON(conn, routing.ExchangePerilDirect, routing.PauseKey+"."+gs.GetUsername(), routing.PauseKey, "transient", handlerPause(gs))
+	err = pubsub.SubscribeJSON(
+		conn,
+		routing.ExchangePerilDirect,
+		routing.PauseKey+"."+gs.GetUsername(),
+		routing.PauseKey, "transient", handlerPause(gs))
 	if err != nil {
-		log.Fatalf("Error subscribing to json: %v", err)
+		log.Fatalf("Error subscribing to pause queue: %v", err)
 	}
-	fmt.Println("Subscribed to channel json.")
+	err = pubsub.SubscribeJSON(conn,
+		routing.ExchangePerilTopic,
+		routing.ArmyMovesPrefix+"."+gs.GetUsername(),
+		routing.ArmyMovesPrefix+".*",
+		"transient", handleMove(gs))
+	if err != nil {
+		log.Fatalf("Error subscribing to move queue: %v", err)
+	}
+	fmt.Println("Subscribed to all channels.")
 	for {
 		clientCmds := gamelogic.GetInput()
 		if len(clientCmds) != 0 {
@@ -46,10 +63,21 @@ func main() {
 					fmt.Printf("invalid spawn syntax: %v\n", err)
 				}
 			case "move":
-				_, err := gs.CommandMove(clientCmds)
+				mv, err := gs.CommandMove(clientCmds)
 				if err != nil {
 					fmt.Printf("invalid move syntax: %s\n", err)
+					continue
 				}
+				err = pubsub.PublishJSON(publishCh,
+					routing.ExchangePerilTopic,
+					routing.ArmyMovesPrefix+"."+mv.Player.Username,
+					mv,
+				)
+				if err != nil {
+					fmt.Printf("error: %v", err)
+					continue
+				}
+				fmt.Printf("Moved %v unit(s) to %v\n", len(mv.Units), mv.ToLocation)
 			case "status":
 				gs.CommandStatus()
 			case "help":
