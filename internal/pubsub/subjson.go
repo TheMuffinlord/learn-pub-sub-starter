@@ -3,8 +3,17 @@ package pubsub
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 
 	amqp "github.com/rabbitmq/amqp091-go"
+)
+
+type AckType int
+
+const (
+	AckTypeAck AckType = iota
+	AckTypeNackRequeue
+	AckTypeNackDiscard
 )
 
 func SubscribeJSON[T any](
@@ -13,7 +22,7 @@ func SubscribeJSON[T any](
 	queueName,
 	key string,
 	queueType SimpleQueueType, // an enum to represent "durable" or "transient"
-	handler func(T),
+	handler func(T) AckType,
 ) error {
 	subChannel, subQueue, err := DeclareAndBind(conn, exchange, queueName, key, queueType)
 	if err != nil {
@@ -41,8 +50,18 @@ func SubscribeJSON[T any](
 				fmt.Printf("Could not unmarshal message: %v", err)
 				continue
 			}
-			handler(target)
-			msg.Ack(false)
+			acktype := handler(target)
+			switch acktype {
+			case AckTypeAck:
+				msg.Ack(false)
+				log.Println("message ack")
+			case AckTypeNackDiscard:
+				msg.Nack(false, false)
+				log.Println("message nack(discard)")
+			case AckTypeNackRequeue:
+				msg.Nack(false, true)
+				log.Println("message nack(requeue)")
+			}
 		}
 	}()
 
