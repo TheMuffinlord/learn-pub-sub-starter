@@ -9,6 +9,8 @@ type SimpleQueueType string
 const (
 	QueueTypeDurable   SimpleQueueType = "durable"
 	QueueTypeTransient SimpleQueueType = "transient"
+
+	DeadLetterExchange = "peril_dlx"
 )
 
 func DeclareAndBind(
@@ -32,7 +34,10 @@ func DeclareAndBind(
 		isDurable = false
 		isTransient = true
 	}
-	dbQueue, err := dbChannel.QueueDeclare(queueName, isDurable, isTransient, isTransient, false, nil)
+
+	dbQueue, err := dbChannel.QueueDeclare(queueName, isDurable, isTransient, isTransient, false, amqp.Table{
+		"x-dead-letter-exchange": DeadLetterExchange,
+	})
 	if err != nil {
 		return dbChannel, dbQueue, err
 	}
