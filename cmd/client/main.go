@@ -48,9 +48,19 @@ func main() {
 		routing.ExchangePerilTopic,
 		routing.ArmyMovesPrefix+"."+gs.GetUsername(),
 		routing.ArmyMovesPrefix+".*",
-		"transient", handleMove(gs))
+		"transient", handleMove(gs, publishCh))
 	if err != nil {
 		log.Fatalf("Error subscribing to move queue: %v", err)
+	}
+	err = pubsub.SubscribeJSON(conn,
+		routing.ExchangePerilTopic,
+		routing.WarRecognitionsPrefix,
+		routing.WarRecognitionsPrefix+".*",
+		pubsub.QueueTypeDurable,
+		handleWar(gs),
+	)
+	if err != nil {
+		log.Fatalf("Error subscribing to war channel: %v", err)
 	}
 	fmt.Println("Subscribed to all channels.")
 	for {
