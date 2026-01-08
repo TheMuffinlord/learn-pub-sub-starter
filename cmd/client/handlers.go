@@ -36,7 +36,7 @@ func handleMove(gs *gamelogic.GameState, pubCh *amqp.Channel) func(gamelogic.Arm
 				fmt.Printf("error: %s\n", err)
 				return pubsub.AckTypeNackRequeue
 			}
-			return pubsub.AckTypeNackRequeue
+			return pubsub.AckTypeAck
 		default:
 			return pubsub.AckTypeNackDiscard
 		}
