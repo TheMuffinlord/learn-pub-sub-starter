@@ -57,7 +57,7 @@ func main() {
 		routing.WarRecognitionsPrefix,
 		routing.WarRecognitionsPrefix+".*",
 		pubsub.QueueTypeDurable,
-		handleWar(gs),
+		handleWar(gs, publishCh),
 	)
 	if err != nil {
 		log.Fatalf("Error subscribing to war channel: %v", err)
