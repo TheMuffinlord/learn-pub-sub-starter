@@ -1,6 +1,8 @@
 package pubsub
 
 import (
+	"bytes"
+	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -11,9 +13,9 @@ import (
 type AckType int
 
 const (
-	AckTypeAck AckType = iota
-	AckTypeNackRequeue
-	AckTypeNackDiscard
+	Ack AckType = iota
+	NackDiscard
+	NackRequeue
 )
 
 func SubscribeJSON[T any](
@@ -24,7 +26,54 @@ func SubscribeJSON[T any](
 	queueType SimpleQueueType, // an enum to represent "durable" or "transient"
 	handler func(T) AckType,
 ) error {
-	subChannel, subQueue, err := DeclareAndBind(conn, exchange, queueName, key, queueType)
+	return subscribe(
+		conn,
+		exchange,
+		queueName,
+		key,
+		queueType,
+		handler,
+		func(data []byte) (T, error) {
+			var target T
+			err := json.Unmarshal(data, &target)
+			return target, err
+		},
+	)
+}
+
+func SubscribeGob[T any](
+	conn *amqp.Connection,
+	exchange, queueName, key string,
+	queueType SimpleQueueType,
+	handler func(T) AckType,
+) error {
+	return subscribe(
+		conn,
+		exchange,
+		queueName,
+		key,
+		queueType,
+		handler,
+		func(data []byte) (T, error) {
+			buffer := bytes.NewBuffer(data)
+			dec := gob.NewDecoder(buffer)
+			var target T
+			err := dec.Decode(&target)
+			return target, err
+		},
+	)
+}
+
+func subscribe[T any](
+	conn *amqp.Connection,
+	exchange,
+	queueName,
+	key string,
+	simpleQueueType SimpleQueueType,
+	handler func(T) AckType,
+	unmarshaller func([]byte) (T, error),
+) error {
+	subChannel, subQueue, err := DeclareAndBind(conn, exchange, queueName, key, simpleQueueType)
 	if err != nil {
 		return fmt.Errorf("error declaring and binding queue: %v", err)
 	}
@@ -34,13 +83,7 @@ func SubscribeJSON[T any](
 		return fmt.Errorf("could not consume messages: %v", err)
 	}
 
-	fmt.Println("created delivery channel.")
-
-	unmarshaller := func(data []byte) (T, error) {
-		var target T
-		err := json.Unmarshal(data, &target)
-		return target, err
-	}
+	fmt.Println("Created delivery channel.")
 
 	go func() {
 		defer subChannel.Close()
@@ -52,13 +95,13 @@ func SubscribeJSON[T any](
 			}
 			acktype := handler(target)
 			switch acktype {
-			case AckTypeAck:
+			case Ack:
 				msg.Ack(false)
 				log.Println("message ack")
-			case AckTypeNackDiscard:
+			case NackDiscard:
 				msg.Nack(false, false)
 				log.Println("message nack(discard)")
-			case AckTypeNackRequeue:
+			case NackRequeue:
 				msg.Nack(false, true)
 				log.Println("message nack(requeue)")
 			}

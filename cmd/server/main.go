@@ -26,11 +26,17 @@ func main() {
 	}
 	fmt.Println("Connection channel opened.")
 
-	_, queue, err := pubsub.DeclareAndBind(conn, "peril_topic", routing.GameLogSlug, "game_logs.*", "durable")
+	err = pubsub.SubscribeGob(
+		conn,
+		routing.ExchangePerilTopic,
+		routing.GameLogSlug,
+		routing.GameLogSlug+".*",
+		pubsub.QueueTypeDurable,
+		handlerLogs(),
+	)
 	if err != nil {
-		log.Fatalf("Error binding channel and queue: %v", err)
+		log.Fatalf("could not consume logs: %v", err)
 	}
-	fmt.Printf("Queue %v declared and bound successfully.\n", queue.Name)
 
 	gamelogic.PrintServerHelp()
 
