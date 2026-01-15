@@ -6,6 +6,7 @@ import (
 	"learn-pub-sub-starter/internal/pubsub"
 	"learn-pub-sub-starter/internal/routing"
 	"log"
+	"strconv"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -93,7 +94,27 @@ func main() {
 			case "help":
 				gamelogic.PrintClientHelp()
 			case "spam":
-				fmt.Println("Spamming is not allowed yet!")
+				if len(clientCmds) != 2 {
+					fmt.Println("usage: spam <quantity>")
+					continue
+				}
+				spamQuant, err := strconv.Atoi(clientCmds[1])
+				if err != nil {
+					fmt.Printf("error with spam: %v\n", err)
+					fmt.Println("usage: spam <quantity>")
+					continue
+				}
+				fmt.Println("spamming queue...")
+				for i := 0; i < spamQuant; i++ {
+					spamLog := gamelogic.GetMaliciousLog()
+					err = pubsub.PublishGameLog(gs, publishCh, spamLog)
+					if err != nil {
+						fmt.Printf("error during spam: %v\n", err)
+						break
+					}
+				}
+				fmt.Printf("spam message published %v times.\n", spamQuant)
+
 			case "quit":
 				fmt.Println("exiting client.")
 				return
