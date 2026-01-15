@@ -107,7 +107,7 @@ func main() {
 				fmt.Println("spamming queue...")
 				for i := 0; i < spamQuant; i++ {
 					spamLog := gamelogic.GetMaliciousLog()
-					err = pubsub.PublishGameLog(gs, publishCh, spamLog)
+					err = pubsub.PublishGameLog(publishCh, userName, spamLog)
 					if err != nil {
 						fmt.Printf("error during spam: %v\n", err)
 						break

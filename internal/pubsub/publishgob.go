@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/gob"
-	"learn-pub-sub-starter/internal/gamelogic"
 	"learn-pub-sub-starter/internal/routing"
 	"time"
 
@@ -26,12 +25,12 @@ func PublishGob[T any](ch *amqp.Channel, exchange, key string, val T) error {
 	return nil
 }
 
-func PublishGameLog(gs *gamelogic.GameState, ch *amqp.Channel, logText string) error {
+func PublishGameLog(ch *amqp.Channel, username, logText string) error {
 	pubLog := routing.GameLog{
 		CurrentTime: time.Now(),
 		Message:     logText,
-		Username:    gs.GetUsername(),
+		Username:    username,
 	}
-	err := PublishGob(ch, routing.ExchangePerilTopic, routing.GameLogSlug+"."+gs.GetUsername(), pubLog)
+	err := PublishGob(ch, routing.ExchangePerilTopic, routing.GameLogSlug+"."+username, pubLog)
 	return err
 }

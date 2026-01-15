@@ -54,21 +54,21 @@ func handleWar(gs *gamelogic.GameState, pubCh *amqp.Channel) func(gamelogic.Reco
 			return pubsub.NackDiscard
 		case gamelogic.WarOutcomeOpponentWon:
 			logMsg := winner + " won a war against " + loser
-			err := pubsub.PublishGameLog(gs, pubCh, logMsg)
+			err := pubsub.PublishGameLog(pubCh, gs.GetUsername(), logMsg)
 			if err != nil {
 				fmt.Printf("error logging war outcome: %v", err)
 			}
 			return pubsub.Ack
 		case gamelogic.WarOutcomeYouWon:
 			logMsg := winner + " won a war against " + loser
-			err := pubsub.PublishGameLog(gs, pubCh, logMsg)
+			err := pubsub.PublishGameLog(pubCh, gs.GetUsername(), logMsg)
 			if err != nil {
 				fmt.Printf("error logging war outcome: %v", err)
 			}
 			return pubsub.Ack
 		case gamelogic.WarOutcomeDraw:
 			logMsg := "A war between " + winner + " and " + loser + " resulted in a draw"
-			err := pubsub.PublishGameLog(gs, pubCh, logMsg)
+			err := pubsub.PublishGameLog(pubCh, gs.GetUsername(), logMsg)
 			if err != nil {
 				fmt.Printf("error logging war outcome: %v", err)
 			}
