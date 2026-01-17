@@ -16,6 +16,8 @@ const (
 	Ack AckType = iota
 	NackDiscard
 	NackRequeue
+
+	PrefetchCount = 10
 )
 
 func SubscribeJSON[T any](
@@ -78,6 +80,10 @@ func subscribe[T any](
 		return fmt.Errorf("error declaring and binding queue: %v", err)
 	}
 	fmt.Println("Declared queue.")
+	err = subChannel.Qos(PrefetchCount, 0, true)
+	if err != nil {
+		return fmt.Errorf("error setting prefetch conditions: %v", err)
+	}
 	deliveries, err := subChannel.Consume(subQueue.Name, "", false, false, false, false, nil)
 	if err != nil {
 		return fmt.Errorf("could not consume messages: %v", err)
